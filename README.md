@@ -5,7 +5,7 @@ Agenda:
 1. Review
 2. Activity
 3. Discuss
-4. Boxplot lecture
+4. Boxplot lecture (see week4-day1.Rmd)
 
 Homework:
 
