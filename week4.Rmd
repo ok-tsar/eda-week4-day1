@@ -1,0 +1,157 @@
+---
+title: "Week 4 day 1"
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: console
+---
+
+## Overview
+Last week we learned about distributions and their visualizations. This week will we move on to better understand the concept of correlation and the different ways of visualizing and exploring correlations in our data.
+
+First we will learn about another tool useful for examining the properties of our data: the boxplot.
+
+You can visit: https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/airquality.html for more information about this data set. Note: Definition: Ozone concentrations refer to the quantity of ozone (O3) molecules in the air. 
+
+*Motivating question: Are Heat Waves Associated with Lower Air Quality ?*
+- https://www.thoughtco.com/heat-waves-make-air-quality-worse-1204013
+
+"Air quality decreases during times of hot temperatures because the heat and sunlight essentially cook the air along with all the chemical compounds lingering within it. This chemical soup combines with the nitrogen oxide emissions present in the air, creating a “ smog” of ground-level ozone gas."
+
+## Explore the data
+```{r}
+library(datasets)
+library(ggplot2)
+
+#check the data
+data(airquality)
+head(airquality)
+str(airquality)
+
+# or top 5 (see, very similar to head())
+airquality[1:5,]
+
+# you could check information about the distribution of a variable you are interested in
+mean(airquality$Temp)
+quantile(airquality$Temp)
+summary(airquality$Ozone) 
+```
+
+Notice that “Month” and “Day” are coded as numeric variables even though they are clearly
+categorical. This can be mended as follows, e.g.:
+
+```{r}
+airquality$Month <- factor(airquality$Month,
+                           labels = c("May", "Jun", "Jul", "Aug", "Sep"))
+```
+
+## Basic boxplot 
+R has a pretty easy to use base R function for boxplots. We can examine the numeric data pretty easily using this built-in function ( Notice that missing data causes no problems to the
+boxplot function (similar to summary):
+
+```{r}
+boxplot(airquality[,1:4])
+```
+
+Figure (b) is not always meaningful, as the variables may not be on comparable scales. The real power
+of box plots is to do comparisons of variables by sub-grouping. For example, we may be interested
+in comparing the fluctuations in temperature across months. To create boxplots of temperature data
+grouped by the factor “month”, we use the command: 
+
+```{r}
+boxplot(Temp ~ Month, data = airquality) 
+```
+
+## Boxplot in ggplot
+Now let's toy with the same information, but in ggplot. In order to begin we will create a plot and  tell `ggplot` that `airquality` is our data, and specify that our x-axis plots the `Month` variable and our y-axis plots the `Ozone` variable. We then instruct ggplot to graph this as a boxplot by adding the geom_boxplot() option. 
+
+```{r}
+plot1 <- ggplot(airquality, aes(x = Month, y = Ozone)) +
+        geom_boxplot()
+plot1
+```
+
+Why did we get this warning message? If we were to examine our variables using the summary() function, we might have a pretty clear answer:
+
+```{r}
+summary(airquality$Ozone)
+```
+
+We can see here that the number of NAs = 37, which is the same number given in the warning If we remove NAs (we will talk about missing data later in the class), we will no longer get this warning.
+
+```{r}
+airSub = airquality %>% subset(!is.na(Ozone)) 
+
+plot1 <- ggplot(airSub, aes(x = Month, y = Ozone)) +
+        geom_boxplot()
+```
+
+Let's fix up those axes a bit. Let’s make the y-axis ticks appear at every 25 units rather than 50 using the breaks = seq(0, 175, 25) argument in scale_y_continuous. (The seq function is a base R function that indicates the start and endpoints and the units to increment by respectively. See help(seq) for more information.) We ensure that the y-axis begins and ends where we want by also adding the argument limits = c(0, 175) to scale_y_continuous.
+
+```{r}
+plot1 <- plot1 + scale_x_discrete(name = "Month") +
+       scale_y_continuous(name = "Mean ozone in\nparts per billion",
+                              breaks = seq(0, 175, 25),
+                              limits=c(0, 175)) + 
+        ggtitle("Boxplot of mean ozone by month")
+plot1
+```
+
+As mentioned earlier, the visual power of a boxplot is often found in its ability to quickly relay differences across variables. We first need to do a little data wrangling. In order to make the graphs a bit clearer, we’ve kept only months “July”, “Aug” and “Sep” in a new dataset airquality_trimmed. We’ve also mean-split Temp so that this is also categorical, and made it into a new labeled factor variable called `Temp.f`.
+
+Recall: https://www.statmethods.net/management/operators.html
+
+"|" logical operator in R refers to "OR" staements. 
+
+# Boxplot across groups
+```{r}
+#trim the data for the months you want
+airquality_trimmed <- airSub[which(airSub$Month == "Jul" |
+                                       airSub$Month == "Aug" |
+                                       airSub$Month == "Sep"), ]
+
+# create a new variable based on mean temperature and "low high" groupings
+airquality_trimmed$Temp.f <- factor(ifelse(airquality_trimmed$Temp > mean(airquality_trimmed$Temp), 1, 0),labels = c("Low temp", "High temp"))
+
+# now create a boxplot that compared low and high averages. What is new here? (what does "fill" do?)
+# challenge yourself to write a comment to explain each line of code
+finalPlot <- ggplot(airquality_trimmed, aes(x = Month, y = Ozone, fill = Temp.f)) +
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Mean ozone in\nparts per billion",
+                           breaks = seq(0, 175, 25),
+                           limits=c(0, 175)) +
+        scale_x_discrete(name = "Month") +
+        ggtitle("Boxplot of mean ozone by month") +
+        theme_bw() +
+        theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+              text = element_text(size = 12, family = "Tahoma"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 11)) +
+        scale_fill_brewer(palette = "Accent")
+finalPlot
+```
+
+There are a lot of things you might want to toy with here, such as color, legend position, or legend label. Spend time with the above code chunk and get familiar with the different ways we could have examined this data. 
+
+## On your own
+
+Here is another quick boxplot using different data for you to examine on your own:
+
+```{r}
+gapminder <- read.csv("https://raw.githubusercontent.com/swcarpentry/r-novice-gapminder/gh-pages/_episodes_rmd/data/gapminder-FiveYearData.csv")
+
+head(gapminder)
+
+ggplot(gapminder, aes(x = continent, y = lifeExp, fill = continent)) +
+  geom_boxplot()
+
+```
+
+
+## References
+- http://t-redactyl.io/blog/2016/04/creating-plots-in-r-using-ggplot2-part-10-boxplots.html
+- http://people.bu.edu/aimcinto/720/lec2.pdf
+- http://www.rebeccabarter.com/blog/2017-11-17-ggplot2_tutorial/
